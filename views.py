@@ -19,26 +19,53 @@ def test(request):
 
 def addItem(request,target="default"):
     if target[-4:] == ".pdf":
+        print(len(target.split("--")))
         targetFile = target.split('__')[-1]
         targetDir = target.split('__')[0]
-        print(targetFile)
-        print(targetDir)
+        print("targetFile -> {}".format(targetFile))
+        print("targetDir -> {}".format(targetDir))
         pdf2mezzanine(targetFile, "/home/patsykakaz/ARCHIVES_PDF/"+targetDir)
         return HttpResponse("PDF OKAY")
     else:
-        return HttpResponse('no PDF') 
+        return HttpResponse('no PDF')
 
-def sys_pdf_converter(request):
-    cwd = '/users/patsykakaz/Desktop/'
-    directory = '/users/patsykakaz/Desktop/pdfOnly/'
-    process = subprocess.Popen("ls "+directory,shell=True,stdout=subprocess.PIPE,)
-    liste_pdf = process.communicate()[0].split('\n')
-    print(liste_pdf)
+def addFile(request, target="default"):
+    if target[-4:] == ".pdf":
+        splitTarget = target.split('__')
+        if len(splitTarget) > 1:
+            # Item is a PATH
+        else:
+            # Item is in rootDir
+            targetFile = splitTarget[0]
+            pdf2mezzanine(targetFile, "/home/patsykakaz/ARCHIVES_PDF/")
+            # Item is a FILE
+    else:
+        # error should be fired
+        return HttpResponse('Processed file is not a PDF')
 
-    for item in liste_pdf:
-        pdf2mezzanine(item, directory)
+def addDir(request, target="default"):
+    splitTarget = target.split('__')
+    # if os.path.isdir(directory+filename):
+    if len(splitTarget) > 1:
+        # Item has a PATH
+        pass
+    else:
+        # Item is in rootDir
+        targetDir = splitTarget[0]
+        print(targetDir)
+        k = ArchiveRevue.objects.filter(title=targetDir)
+        if len(k) == 0:
+            # new page
+            k = ArchiveRevue(title=targetDir,content="Nouvelle Branche Ouverte ")
+        else:
+            # old page
+            k = k[0]
+            k.content = "Modification de Branche "
+        k.save()
+    print("addDir process complete")
 
-    return HttpResponse('DONE')
+
+        # Item is only a FILE
 
 def pdf2mezzanine(filename, directory, parent=None):
     print("pdf2mezzanine starting")
@@ -55,29 +82,21 @@ def pdf2mezzanine(filename, directory, parent=None):
             filename.replace(' ', '_')
 
         if os.path.isdir(directory+filename):
-            print('directory')
             if len(ArchiveRevue.objects.filter(title=filename)) == 0:
                 ppage = ArchiveRevue(title=filename,content="Création d'une nouvelle branche correspondant à l'ouverture du sous-dossier: ")
             else:
                 ppage = ArchiveRevue.objects.get(title=filename)
                 ppage.content = "Modification d'une nouvelle branche correspondant à l'ouverture du sous-dossier: "
             ppage.save()
-            print(ppage)
             childrenDirectory = directory+filename+'/'
             childrenProcess = subprocess.Popen("ls "+childrenDirectory,shell=True,stdout=subprocess.PIPE)
             children_pdf_list = childrenProcess.communicate()[0].split('\n')
-            print(children_pdf_list)
             for childrenItem in children_pdf_list:
                 pdf2mezzanine(childrenItem, childrenDirectory, parent=ppage)
         else:
-            print("directory ---> {}".format(directory))
-            print("directory ---> {}".format(filename))
             file2conv = directory+"/"+filename
-            print("file2conv type : {}".format(type(file2conv)))
             k = ArchiveRevue.objects.filter(title=filename)
-            print("former ArchiveRevue :  {}".format(k))
             bob = convert(file2conv)
-            print("bob : {}".format(bob))
             if len(k) == 0:
                 if parent != None:
                     k = ArchiveRevue(title=filename, content=bob.decode('utf-8'), parent=parent)
@@ -114,20 +133,20 @@ def convert(fname, pages=None):
     converter.close()
     text = output.getvalue()
     output.close
-    return text 
+    return text
 
 
-# def sys_pdf_converter(request):
-#     html = ""
-#     workingDir = '/users/patsykakaz/Desktop'
-#     print(subprocess.check_output('pwd'))
 
-#     subprocess.Popen(["cd", workingDir], stdout=subprocess.PIPE)
-#     print('Subprocess1')
-#     kkk = subprocess.Popen(["pwd"], stdout=subprocess.PIPE)
-#     print(kkk.communicate())
-#     print('Subprocess2')
-#     # tempTxt = subprocess.check_output('pdf2txt.py test.pdf')
-#     tempTxt = subprocess.Popen(["pdf2txt.py test.pdf"], stdout=subprocess.PIPE, cwd=True)
 
-#     return HttpResponse('ok')
+
+def sys_pdf_converter(request):
+    cwd = '/users/patsykakaz/Desktop/'
+    directory = '/users/patsykakaz/Desktop/pdfOnly/'
+    process = subprocess.Popen("ls "+directory,shell=True,stdout=subprocess.PIPE,)
+    liste_pdf = process.communicate()[0].split('\n')
+    print(liste_pdf)
+
+    for item in liste_pdf:
+        pdf2mezzanine(item, directory)
+
+    return HttpResponse('DONE')

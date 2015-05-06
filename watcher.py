@@ -19,27 +19,36 @@ class EventHandler(pyinotify.ProcessEvent):
 
     def process_IN_CLOSE_WRITE(self, event):
         target = event.pathname[directory_len:]
-        target = target.replace(' ','_')
-        target = target.split('/')
-        itemTarget = target[-1]
-        print("itemTarget >>> {}".format(itemTarget))
-        del target[-1]
-        target = "/".join(target)
-        print("targetDir =  {}".format(target))
-        target = target.replace('/','&&')
-	target += '&&'+itemTarget
-        print("targetFull >>> {}".format(target))
-        urlTarget = 'http://127.0.0.1:8088/convert/addItem/'+target
-        req = urllib2.Request(urlTarget)
-        print(req)
-        response = urllib2.urlopen(req)
-        print(response)
-        html = response.read()
-        print("RESPONSE >>> {}".format(html))
-        if event.dir:
-            print "Création de répertoire :", event.pathname
+        targetSplit = target.split('/')
+        if len(targetSplit) > 1:
+            # Item has a PATH
+            pass
         else:
-            print "Création de fichier :", event.pathname
+            # Item is in rootDir
+            if event.dir:
+                targetDir = targetSplit[0]
+                url = 'http://127.0.0.1:8088/convert/addDir/'+targetDir
+                req = urllib2.Request(url)
+                response = urllib2.urlopen(req)
+                html = response.read()
+                print "CREATING Directory :", event.pathname
+                print("RESPONSE >>> {}".format(html))
+            else:
+                targetFile = targetSplit[0]
+                url = 'http://127.0.0.1:8088/convert/addFile/'+targetFile
+                req = urllib2.Request(url)
+                response = urllib2.urlopen(req)
+                html = response.read()
+                print "CREATING FILE :", event.pathname
+                print("RESPONSE >>> {}".format(html))
+
+        # itemTarget = target[-1]
+        # print("itemTarget >>> {}".format(itemTarget))
+        # del target[-1]
+        # target = "/".join(target)
+        # print("targetDir =  {}".format(target))
+        # target = target.replace('/','&&')
+        # target += '&&'+itemTarget
 
 
 handler = EventHandler()
