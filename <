@@ -18,12 +18,7 @@ def test(request):
     return HttpResponse('test completed')
 
 def addItem(request,target="default"):
-    if target[-4:] == ".pdf":
-        targetFile = target.split('__')[-1]
-        targetDir = target.split('__')[0]
-        print(targetFile)
-        print(targetDir)
-        pdf2mezzanine(targetFile, "/home/patsykakaz/ARCHIVES_PDF/"+targetDir)
+    if target[-4:0] == ".pdf":
         return HttpResponse("PDF OKAY")
     else:
         return HttpResponse('no PDF') 
@@ -41,9 +36,6 @@ def sys_pdf_converter(request):
     return HttpResponse('DONE')
 
 def pdf2mezzanine(filename, directory, parent=None):
-    print("pdf2mezzanine starting")
-    print(filename)
-    print(directory)
     if filename == "":
         print('empty item')
         pass
@@ -70,14 +62,10 @@ def pdf2mezzanine(filename, directory, parent=None):
             for childrenItem in children_pdf_list:
                 pdf2mezzanine(childrenItem, childrenDirectory, parent=ppage)
         else:
-            print("directory ---> {}".format(directory))
-            print("directory ---> {}".format(filename))
-            file2conv = directory+"/"+filename
-            print("file2conv type : {}".format(type(file2conv)))
+            file2conv = directory+filename
+            # process = subprocess.Popen("pdf2txt.py "+file2conv,shell=True,stdout=subprocess.PIPE,)
             k = ArchiveRevue.objects.filter(title=filename)
-            print("former ArchiveRevue :  {}".format(k))
             bob = convert(file2conv)
-            print("bob : {}".format(bob))
             if len(k) == 0:
                 if parent != None:
                     k = ArchiveRevue(title=filename, content=bob.decode('utf-8'), parent=parent)
@@ -101,12 +89,12 @@ def convert(fname, pages=None):
         pagenums = set()
     else:
         pagenums = set(pages)
-    print(fname)
 
     output = StringIO()
     manager = PDFResourceManager()
     converter = TextConverter(manager, output, laparams=LAParams())
     interpreter = PDFPageInterpreter(manager, converter)
+
     infile = file(fname, 'rb')
     for page in PDFPage.get_pages(infile, pagenums):
         interpreter.process_page(page)
