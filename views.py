@@ -42,7 +42,7 @@ def addFile(request, target="default", parent=None):
             print(splitTarget)
             parent = "_".join(splitTarget)
             print("parent is : {}".format(parent))
-            targetPath = "/".join(splitTarget)
+            targetPath = parent.replace('_', '/')
             print("targetPath is {} and targetFile is {}".format(targetPath, targetFile))
             try:
                 parent = ArchiveRevue.objects.get(title=parent)
@@ -69,13 +69,21 @@ def deleteFile(request, target):
     
 def addDir(request, target="default"):
     splitTarget = target.split('&&')
+    targetDir = splitTarget[-1]
     # if os.path.isdir(directory+filename):
+    print('ok')
     if len(splitTarget) > 1:
         # Item has a PATH
-        pass
+        del splitTarget[-1]
+        splitTarget = splitTarget[0].split('&')
+        pathToTarget = "/".join(splitTarget)
+        print("pathToTarget = {}".format(pathToTarget))
+        parent = ArchiveRevue.objects.get(title=pathToTarget.replace('/','_'))
+        print("parent for directory to be aded = {}".format(parent))
+        k = ArchiveRevue(title=parent.title+"_"+targetDir, parent=parent, content="Ouverture de branche")
+        k.save()
     else:
         # Item is in rootDir
-        targetDir = splitTarget[0]
         print(targetDir)
         k = ArchiveRevue.objects.filter(title=targetDir)
         if len(k) == 0:
@@ -118,7 +126,7 @@ def pdf2mezzanine(target, directory, parent=None):
         bob = convert(file2conv)
         if len(k) == 0:
             if parent != None:
-                k = ArchiveRevue(title=target, content=bob.decode('utf-8'), parent=parent)
+                k = ArchiveRevue(title=parent.title+"_"+target, content=bob.decode('utf-8'), parent=parent)
             else:
                 k = ArchiveRevue(title=target, content=bob.decode('utf-8'))
             k.save()
