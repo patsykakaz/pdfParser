@@ -39,10 +39,9 @@ def addFile(request, target="default", parent=None):
             targetFile = splitTarget[-1]
             del splitTarget[-1]
             splitTarget = splitTarget[0].split('&')
-            print(splitTarget)
-            parent = "_".join(splitTarget)
+            parent = "&".join(splitTarget)
             print("parent is : {}".format(parent))
-            targetPath = parent.replace('_', '/')
+            targetPath = parent.replace('&', '/')
             print("targetPath is {} and targetFile is {}".format(targetPath, targetFile))
             try:
                 parent = ArchiveRevue.objects.get(title=parent)
@@ -71,16 +70,15 @@ def addDir(request, target="default"):
     splitTarget = target.split('&&')
     targetDir = splitTarget[-1]
     # if os.path.isdir(directory+filename):
-    print('ok')
     if len(splitTarget) > 1:
         # Item has a PATH
         del splitTarget[-1]
         splitTarget = splitTarget[0].split('&')
         pathToTarget = "/".join(splitTarget)
         print("pathToTarget = {}".format(pathToTarget))
-        parent = ArchiveRevue.objects.get(title=pathToTarget.replace('/','_'))
+        parent = ArchiveRevue.objects.get(title=pathToTarget.replace('/','&'))
         print("parent for directory to be aded = {}".format(parent))
-        k = ArchiveRevue(title=parent.title+"_"+targetDir, parent=parent, content="Ouverture de branche")
+        k = ArchiveRevue(title=parent.title+"&"+targetDir, parent=parent, content="Ouverture de branche")
         k.save()
     else:
         # Item is in rootDir
