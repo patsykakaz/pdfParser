@@ -13,9 +13,39 @@ class EventHandler(pyinotify.ProcessEvent):
 
     def process_IN_DELETE(self, event):
         if event.dir:
-            print "DELETING répertoire :", event.pathname
+            target = event.pathname[directory_len:]
+            target = target.split('/')
+            if len(target) > 1:
+                targetDirectory = target[-1]
+                del target[-1]
+                path = "&".join(target)+"&"+targetDirectory
+                print("path 4 URL : {}".format(path))
+            else: 
+                path = target[0]
+            url = 'http://188.166.47.44/convert/deleteDir/'+path
+            print('about to call url >>> {}'.format(url))
+            req = urllib2.Request(url)
+            response = urllib2.urlopen(req)
+            html = response.read()
+            print "DELETING Directory :", event.pathname
+            print("RESPONSE >>> {}".format(html))
         else:
-            print "DELETING fichier :", event.pathname
+            target = event.pathname[directory_len:]
+            target = target.split('/')
+            if len(target) > 1:
+                targetDirectory = target[-1]
+                del target[-1]
+                path = "&".join(target)+"&"+targetDirectory
+                print("path 4 URL : {}".format(path))
+            else: 
+                path = target[0]
+            url = 'http://188.166.47.44/convert/deleteFile/'+path
+            print('about to call url >>> {}'.format(url))
+            req = urllib2.Request(url)
+            response = urllib2.urlopen(req)
+            html = response.read()
+            print "DELETING File :", event.pathname
+            print("RESPONSE >>> {}".format(html))
 
     def process_IN_CREATE(self, event):
         # CREATION -> POUR DIRECTORY UNIQUEMENT
@@ -25,7 +55,7 @@ class EventHandler(pyinotify.ProcessEvent):
             if len(target) > 1:
                 targetDirectory = target[-1]
                 del target[-1]
-                path = "&".join(target)+"&&"+targetDirectory
+                path = "&".join(target)+"&"+targetDirectory
                 print("path 4 URL : {}".format(path))
             else: 
                 path = target[0]
@@ -46,7 +76,7 @@ class EventHandler(pyinotify.ProcessEvent):
             if not event.dir:
                 targetFile = targetSplit[-1]
                 del targetSplit[-1]
-                targetPath = "&".join(targetSplit)+"&&"+targetFile
+                targetPath = "&".join(targetSplit)+"&"+targetFile
                 url = 'http://188.166.47.44/convert/addFile/'+targetPath
                 print("> about to call url : {}".format(url))
         else:
@@ -75,3 +105,4 @@ notifier = pyinotify.Notifier(wm, handler)
 wdd = wm.add_watch(directory, mask, rec=True, auto_add=True)
 
 notifier.loop()
+

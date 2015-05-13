@@ -16,40 +16,24 @@ from subprocess import *
 
 path_to_archive_directory = "/home/patsykakaz/ARCHIVES_PDF/"
 
-def test(request):
-    return HttpResponse('test completed')
-
-def addItem(request,target="default"):
-    if target[-4:] == ".pdf":
-        print(len(target.split("--")))
-        targetFile = target.split('__')[-1]
-        targetDir = target.split('__')[0]
-        print("targetFile -> {}".format(targetFile))
-        print("targetDir -> {}".format(targetDir))
-        pdf2mezzanine(targetFile, path_to_archive_directory+targetDir)
-        return HttpResponse("PDF OKAY")
-    else:
-        return HttpResponse('no PDF')
 
 def addFile(request, target="default", parent=None):
     if target[-4:] == ".pdf":
-        splitTarget = target.split('&&')
+        splitTarget = target.split('&')
         if len(splitTarget) > 1:
             # Item has a PATH
             targetFile = splitTarget[-1]
             del splitTarget[-1]
-            splitTarget = splitTarget[0].split('&')
-            parent = "&".join(splitTarget)
-            print("parent is : {}".format(parent))
-            targetPath = parent.replace('&', '/')
+            targetPath = "/".join(splitTarget)
             print("targetPath is {} and targetFile is {}".format(targetPath, targetFile))
             try:
-                parent = ArchiveRevue.objects.get(title=parent)
+                parent = ArchiveRevue.objects.get(title=targetPath.replace('/',"&"))
                 print("parent = {}".format(parent))
             except:
                 # fire ERROR
                 # fire ERROR
                 # fire ERROR
+                print('ERROR file.parent (addFile)')
                 parent = None
             pdf2mezzanine(targetFile, path_to_archive_directory+targetPath, parent)
         else:
@@ -57,46 +41,79 @@ def addFile(request, target="default", parent=None):
             targetFile = splitTarget[0]
             print("starting conversion for targetFile = ", targetFile)
             pdf2mezzanine(targetFile, path_to_archive_directory)
-            # Item is a FILE
         return HttpResponse('PDF process complete')
     else:
+        # error should be fired
+        # error should be fired
         # error should be fired
         return HttpResponse('Processed file is not a PDF')
 
 def deleteFile(request, target):
-    pass
+    if target[-4:] == ".pdf":
+        try:
+            target = ArchiveRevue.objects.get(title=target)
+            # print("target to delete = {}".format(parent))
+            target.delete()
+        except:
+            # fire ERROR
+            # fire ERROR
+            # fire ERROR
+            pass
+        return HttpResponse('deletion process complete')
+    else:
+        # fire ERROR
+        # fire ERROR
+        # fire ERROR
+        return HttpResponse('File to Delete is not a PDF')
     
 def addDir(request, target="default"):
-    splitTarget = target.split('&&')
+    splitTarget = target.split('&')
     targetDir = splitTarget[-1]
     # if os.path.isdir(directory+filename):
     if len(splitTarget) > 1:
         # Item has a PATH
         del splitTarget[-1]
-        splitTarget = splitTarget[0].split('&')
         pathToTarget = "/".join(splitTarget)
         print("pathToTarget = {}".format(pathToTarget))
-        parent = ArchiveRevue.objects.get(title=pathToTarget.replace('/','&'))
+        try: 
+            parent = ArchiveRevue.objects.get(title=pathToTarget.replace('/','&'))
+        except:
+            # fire ERROR
+            # fire ERROR
+            # fire ERROR
+            pass
         print("parent for directory to be aded = {}".format(parent))
-        k = ArchiveRevue(title=parent.title+"&"+targetDir, parent=parent, content="Ouverture de branche")
-        k.save()
-    else:
-        # Item is in rootDir
-        print(targetDir)
         k = ArchiveRevue.objects.filter(title=targetDir)
         if len(k) == 0:
             # Create new page
-            k = ArchiveRevue(title=targetDir,content="Nouvelle Branche Ouverte ")
+            k = ArchiveRevue(title=parent.title+"&"+targetDir,content="Nouvelle Branche Ouverte ",parent=parent)
         else:
             # Modify page
             k = k[0]
             k.content = "Modification de Branche"
         k.save()
+    else:
+    # Dir is root
+        k = ArchiveRevue.objects.filter(title=target)
+        if len(k):
+            k.content = "Modification de branche"
+        else:
+            k = ArchiveRevue(title=target, content="Ouverture de branche")
+        k.save()
     print("addDir process complete")
     return HttpResponse("addDir process complete")
 
 def deleteDir(request, target):
-    pass
+    print('target = {}'.format(target))
+    try:
+        target = ArchiveRevue.objects.get(title=target)
+        target.delete()
+    except:
+        # fire ERROR
+        # fire ERROR
+        # fire ERROR
+        print('ERROR file.parent (delete)')
+    return HttpResponse('deletion process complete')
 
 def pdf2mezzanine(target, directory, parent=None):
     print("pdf2mezzanine starting for TARGET: {} and DIRECTORY: {}".format(target, directory))
@@ -106,25 +123,12 @@ def pdf2mezzanine(target, directory, parent=None):
     else:
         if " " in target:
             target.replace(' ', '_')
-        # if os.path.isdir(directory+target):
-        #     if len(ArchiveRevue.objects.filter(title=target)) == 0:
-        #         ppage = ArchiveRevue(title=target,content="Création d'une nouvelle branche correspondant à l'ouverture du sous-dossier: ")
-        #     else:
-        #         ppage = ArchiveRevue.objects.get(title=target)
-        #         ppage.content = "Modification d'une nouvelle branche correspondant à l'ouverture du sous-dossier: "
-        #     ppage.save()
-        #     childrenDirectory = directory+target+'/'
-        #     childrenProcess = subprocess.Popen("ls "+childrenDirectory,shell=True,stdout=subprocess.PIPE)
-        #     children_pdf_list = childrenProcess.communicate()[0].split('\n')
-        #     for childrenItem in children_pdf_list:
-        #         pdf2mezzanine(childrenItem, childrenDirectory, parent=ppage)
-        # else:
         file2conv = directory+"/"+target
         k = ArchiveRevue.objects.filter(title=target)
         bob = convert(file2conv)
         if len(k) == 0:
             if parent != None:
-                k = ArchiveRevue(title=parent.title+"_"+target, content=bob.decode('utf-8'), parent=parent)
+                k = ArchiveRevue(title=parent.title+"&"+target, content=bob.decode('utf-8'), parent=parent)
             else:
                 k = ArchiveRevue(title=target, content=bob.decode('utf-8'))
             k.save()
@@ -175,3 +179,4 @@ def sys_pdf_converter(request):
         pdf2mezzanine(item, directory)
 
     return HttpResponse('DONE')
+
