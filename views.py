@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 from settings import PROJECT_ROOT,STATIC_ROOT,MEDIA_ROOT
 from .models import *
 from mezzanine.pages.models import Page
-from .models import ArchiveRevue
+from .models import Archive
 
 from django.http import HttpResponse
 
@@ -13,6 +13,11 @@ import subprocess, os
 from os import *
 from subprocess import *
 
+from cStringIO import StringIO
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.converter import TextConverter
+from pdfminer.layout import LAParams
+from pdfminer.pdfpage import PDFPage
 
 path_to_archive_directory = "/home/patsykakaz/ARCHIVES_PDF/"
 
@@ -27,7 +32,7 @@ def addFile(request, target="default", parent=None):
             targetPath = "/".join(splitTarget)
             print("targetPath is {} and targetFile is {}".format(targetPath, targetFile))
             try:
-                parent = ArchiveRevue.objects.get(title=targetPath.replace('/',"&"))
+                parent = Archive.objects.get(path_to_item=targetPath.replace('/',"&"))
                 print("parent = {}".format(parent))
             except:
                 # fire ERROR
@@ -51,7 +56,7 @@ def addFile(request, target="default", parent=None):
 def deleteFile(request, target):
     if target[-4:] == ".pdf":
         try:
-            target = ArchiveRevue.objects.get(title=target)
+            target = Archive.objects.get(path_to_item=target)
             # print("target to delete = {}".format(parent))
             target.delete()
         except:
@@ -76,17 +81,17 @@ def addDir(request, target="default"):
         pathToTarget = "/".join(splitTarget)
         print("pathToTarget = {}".format(pathToTarget))
         try: 
-            parent = ArchiveRevue.objects.get(title=pathToTarget.replace('/','&'))
+            parent = Archive.objects.get(path_to_item=pathToTarget.replace('/','&'))
         except:
             # fire ERROR
             # fire ERROR
             # fire ERROR
             pass
         print("parent for directory to be aded = {}".format(parent))
-        k = ArchiveRevue.objects.filter(title=targetDir)
+        k = Archive.objects.filter(path_to_item=targetDir)
         if len(k) == 0:
             # Create new page
-            k = ArchiveRevue(title=parent.title+"&"+targetDir,content="Nouvelle Branche Ouverte ",parent=parent)
+            k = Archive(title=targetDir.replace('_',' '), path_to_item=parent.path_to_item+"&"+targetDir, content="Nouvelle Branche Ouverte ", parent=parent)
         else:
             # Modify page
             k = k[0]
@@ -94,11 +99,11 @@ def addDir(request, target="default"):
         k.save()
     else:
     # Dir is root
-        k = ArchiveRevue.objects.filter(title=target)
+        k = Archive.objects.filter(path_to_item=target)
         if len(k):
             k.content = "Modification de branche"
         else:
-            k = ArchiveRevue(title=target, content="Ouverture de branche")
+            k = Archive(title=targetDir.replace('_',' '), path_to_item=target, content="Ouverture de branche")
         k.save()
     print("addDir process complete")
     return HttpResponse("addDir process complete")
@@ -106,7 +111,7 @@ def addDir(request, target="default"):
 def deleteDir(request, target):
     print('target = {}'.format(target))
     try:
-        target = ArchiveRevue.objects.get(title=target)
+        target = Archive.objects.get(path_to_item=target)
         target.delete()
     except:
         # fire ERROR
@@ -124,13 +129,14 @@ def pdf2mezzanine(target, directory, parent=None):
         if " " in target:
             target.replace(' ', '_')
         file2conv = directory+"/"+target
-        k = ArchiveRevue.objects.filter(title=target)
+        k = Archive.objects.filter(path_to_item=target)
         bob = convert(file2conv)
         if len(k) == 0:
+            title = target.replace('.pdf',' (archive)')
             if parent != None:
-                k = ArchiveRevue(title=parent.title+"&"+target, content=bob.decode('utf-8'), parent=parent)
+                k = ArchiveRevue(title=title, path_to_item=parent.path_to_item+"&"+target, content=bob.decode('utf-8'), parent=parent)
             else:
-                k = ArchiveRevue(title=target, content=bob.decode('utf-8'))
+                k = Archive(title=title, path_to_item=target, content=bob.decode('utf-8'))
             k.save()
         else:
             k = k[0]
@@ -139,11 +145,6 @@ def pdf2mezzanine(target, directory, parent=None):
                 k.save()
 
 def convert(fname, pages=None):
-    from cStringIO import StringIO
-    from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
-    from pdfminer.converter import TextConverter
-    from pdfminer.layout import LAParams
-    from pdfminer.pdfpage import PDFPage
 
     if not pages:
         pagenums = set()

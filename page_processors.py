@@ -6,10 +6,10 @@ from .models import *
 from django.db.models import Q
 
 
-@processor_for(ArchiveRevue)
-def processor_univers(request, page):
+@processor_for(Archive)
+def processor_archive(request, page):
     title = page.title.split('&')[-1]
-    pdfPath = page.title.replace('&','/')
+    pdfPath = page.path_to_item.replace('&','/')
     if pdfPath[-1] == '/':
         del pdfPath[-1]
     return locals()
