@@ -8,8 +8,8 @@ from django.db.models import Q
 
 @processor_for(Archive)
 def processor_archive(request, page):
-    title = page.title.split('&')[-1]
-    pdfPath = page.path_to_item.replace('&','/')
+    archive = Archive.objects.get(id=page.id)
+    pdfPath = archive.path_to_item.replace('&','/')
     if pdfPath[-1] == '/':
         del pdfPath[-1]
     return locals()

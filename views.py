@@ -19,107 +19,132 @@ from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 
+from django.views.decorators.csrf import csrf_exempt
+
 path_to_archive_directory = "/home/patsykakaz/ARCHIVES_PDF/"
 
+try:
+    archivePrimary = Archive.objects.get(path_to_item="ARCHIVES")
+    print(archivePrimary)
+except:
+    archivePrimary = Archive(title="ARCHIVES .pdf",path_to_item="ARCHIVES",content="Page accueil ARCHIVES .pdf")
+    archivePrimary.save()
 
-def addFile(request, target="default", parent=None):
-    if target[-4:] == ".pdf":
-        splitTarget = target.split('&')
-        if len(splitTarget) > 1:
-            # Item has a PATH
-            targetFile = splitTarget[-1]
-            del splitTarget[-1]
-            targetPath = "/".join(splitTarget)
-            print("targetPath is {} and targetFile is {}".format(targetPath, targetFile))
-            try:
-                parent = Archive.objects.get(path_to_item=targetPath.replace('/',"&"))
-                print("parent = {}".format(parent))
-            except:
-                # fire ERROR
-                # fire ERROR
-                # fire ERROR
-                print('ERROR file.parent (addFile)')
-                parent = None
-            pdf2mezzanine(targetFile, path_to_archive_directory+targetPath, parent)
-        else:
-            # Item is in rootDir
-            targetFile = splitTarget[0]
-            print("starting conversion for targetFile = ", targetFile)
-            pdf2mezzanine(targetFile, path_to_archive_directory)
-        return HttpResponse('PDF process complete')
-    else:
-        # error should be fired
-        # error should be fired
-        # error should be fired
-        return HttpResponse('Processed file is not a PDF')
 
-def deleteFile(request, target):
-    if target[-4:] == ".pdf":
+
+def test(request):
+    targetName = request.POST['targetName']
+    targetPath = request.POST['targetPath']
+    text = request.POST["bob"]
+
+@csrf_exempt
+def addDir(request):
+    if request.method == "POST":
         try:
-            target = Archive.objects.get(path_to_item=target)
-            # print("target to delete = {}".format(parent))
-            target.delete()
+            targetName = request.POST['targetName']
+            targetPath = request.POST['targetPath']
+            target = targetPath+'/'+targetName
         except:
-            # fire ERROR
-            # fire ERROR
-            # fire ERROR
+            # Fire MultiDictKeyError
             pass
-        return HttpResponse('deletion process complete')
-    else:
-        # fire ERROR
-        # fire ERROR
-        # fire ERROR
-        return HttpResponse('File to Delete is not a PDF')
-    
-def addDir(request, target="default"):
-    splitTarget = target.split('&')
-    targetDir = splitTarget[-1]
-    # if os.path.isdir(directory+filename):
-    if len(splitTarget) > 1:
-        # Item has a PATH
-        del splitTarget[-1]
-        pathToTarget = "/".join(splitTarget)
-        print("pathToTarget = {}".format(pathToTarget))
-        try: 
-            parent = Archive.objects.get(path_to_item=pathToTarget.replace('/','&'))
-        except:
-            # fire ERROR
-            # fire ERROR
-            # fire ERROR
-            pass
-        print("parent for directory to be aded = {}".format(parent))
-        k = Archive.objects.filter(path_to_item=targetDir)
-        if len(k) == 0:
-            # Create new page
-            k = Archive(title=targetDir.replace('_',' '), path_to_item=parent.path_to_item+"&"+targetDir, content="Nouvelle Branche Ouverte ", parent=parent)
+        if targetPath != 'False':
+        # Dir. is not Root
+            print 'dir is not root'
+            k = Archive.objects.filter(path_to_item=target)
+            if len(k) == 0: 
+                print 'about to create new subDirectory'  
+                try:
+                    parent = Archive.objects.get(path_to_item=targetPath)
+                    print "parent is {}".format(parent)
+                except:
+                    # Fire NoParentError
+                    pass
+                # Creating new page
+                k = Archive(title=targetName,path_to_item=targetPath+'/'+targetName,parent=parent,content="Nouvelle Branche Ouverte ")
+                k.save()
         else:
-            # Modify page
-            k = k[0]
-            k.content = "Modification de Branche"
-        k.save()
+        # Dir. is in Root
+            k = Archive.objects.filter(path_to_item=targetName)
+            if len(k) == 0:
+                k = Archive(title=targetName,parent=archivePrimary,path_to_item=targetName,content="Nouvelle Branche Ouverte ")
+                k.save()
+        return HttpResponse("<h1>DATA : </h1> <br /> <h2>request.POST</h2><h3>{}</h3>".format(request.POST))
     else:
-    # Dir is root
-        k = Archive.objects.filter(path_to_item=target)
-        if len(k):
-            k.content = "Modification de branche"
-        else:
-            k = Archive(title=targetDir.replace('_',' '), path_to_item=target, content="Ouverture de branche")
-        k.save()
-    print("addDir process complete")
-    return HttpResponse("addDir process complete")
+        return HttpResponse("<h1>POST DATA MISSING</h1>")
 
-def deleteDir(request, target):
-    print('target = {}'.format(target))
+@csrf_exempt
+def deleteItem(request):
+    if request.method == "POST":
+        try:
+            target = request.POST['target']
+        except:
+            # Fire MultiDictKeyError
+            pass
     try:
         target = Archive.objects.get(path_to_item=target)
         target.delete()
     except:
         # fire ERROR
-        # fire ERROR
-        # fire ERROR
         print('ERROR file.parent (delete)')
     return HttpResponse('deletion process complete')
 
+@csrf_exempt
+def addFile(request):
+    if request.method == "POST":
+        try:
+            bob = request.POST['bob']
+            targetName = request.POST['targetName']
+            targetPath = request.POST['targetPath']
+            target = targetPath+'/'+targetName
+        except:
+            # Fire MultiDictKeyError
+            pass
+        if targetPath != 'False':
+        # Dir. is not Root
+            k = Archive.objects.filter(path_to_item=target)
+            if len(k) == 0:
+                try:
+                    parent = Archive.objects.get(path_to_item=targetPath)
+                except:
+                    # Fire NoParentError
+                    print "parent not found"
+                    pass
+                # Creating new page
+                k = Archive(title=targetName,path_to_item=target,content=bob,parent=parent)
+                k.save()
+            elif len(k) == 1:
+                k = Archive.objects.get(path_to_item=target)
+                if k.override_pdf == False:
+                # check for default Override permission
+                    k.content = bob
+                    k.save()
+        else:
+        # Dir. is in Root
+            k = Archive.objects.filter(path_to_item=targetName)
+            if len(k) == 0:
+                k = Archive(title=targetName,parent=archivePrimary,path_to_item=targetName,content=bob)
+                k.save()
+            elif len(k) == 1:
+                k = Archive.objects.get(path_to_item=targetName)
+                if k.override_pdf == False:
+                # check for default Override permission
+                    k.content = bob
+                    k.save()
+        return HttpResponse("<h1>DATA : </h1> <br /> <h2>request.POST</h2><h3>{}</h3>".format(request.POST))
+    else:
+        return HttpResponse("<h1>POST DATA MISSING</h1>")
+
+# @csrf_exempt
+# def deleteFile(request):
+#     if request.method == "POST":
+#         try:
+#             targetName = request.POST['targetName']
+#             targetPath = request.POST['targetPath']
+#             target = targetPath+'/'+targetName
+#     else:
+#         return HttpResponse("<h1>POST DATA MISSING</h1>")
+
+@csrf_exempt
 def pdf2mezzanine(target, directory, parent=None):
     print("pdf2mezzanine starting for TARGET: {} and DIRECTORY: {}".format(target, directory))
     if target == "":
@@ -134,7 +159,7 @@ def pdf2mezzanine(target, directory, parent=None):
         if len(k) == 0:
             title = target.replace('.pdf',' (archive)')
             if parent != None:
-                k = ArchiveRevue(title=title, path_to_item=parent.path_to_item+"&"+target, content=bob.decode('utf-8'), parent=parent)
+                k = Archive(title=title, path_to_item=parent.path_to_item+"&"+target, content=bob.decode('utf-8'), parent=parent)
             else:
                 k = Archive(title=title, path_to_item=target, content=bob.decode('utf-8'))
             k.save()
@@ -144,40 +169,4 @@ def pdf2mezzanine(target, directory, parent=None):
                 k.content = bob.decode('utf-8')
                 k.save()
 
-def convert(fname, pages=None):
-
-    if not pages:
-        pagenums = set()
-    else:
-        pagenums = set(pages)
-    print(fname)
-
-    output = StringIO()
-    manager = PDFResourceManager()
-    converter = TextConverter(manager, output, laparams=LAParams())
-    interpreter = PDFPageInterpreter(manager, converter)
-    infile = file(fname, 'rb')
-    for page in PDFPage.get_pages(infile, pagenums):
-        interpreter.process_page(page)
-    infile.close()
-    converter.close()
-    text = output.getvalue()
-    output.close
-    return text
-
-
-
-
-
-def sys_pdf_converter(request):
-    cwd = '/users/patsykakaz/Desktop/'
-    directory = '/users/patsykakaz/Desktop/pdfOnly/'
-    process = subprocess.Popen("ls "+directory,shell=True,stdout=subprocess.PIPE,)
-    liste_pdf = process.communicate()[0].split('\n')
-    print(liste_pdf)
-
-    for item in liste_pdf:
-        pdf2mezzanine(item, directory)
-
-    return HttpResponse('DONE')
 
